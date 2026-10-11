@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Aura Quantum Calculator</title>
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0b0e14;
+      --card-bg: #121824;
+      --border-color: #1e293b;
+      --accent-cyan: #00f2fe;
+      --accent-green: #00f59b;
+      --accent-red: #ff3366;
+      --text-main: #f1f5f9;
+      --text-muted: #64748b;
+      --card-gradient: linear-gradient(135deg, rgba(0, 242, 254, 0.05) 0%, rgba(0, 245, 155, 0.05) 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      user-select: none;
+    }
+
+    .header {
+      text-align: center;
+      padding: 6px 0;
+    }
+
+    .header h1 {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-transform: uppercase;
+    }
+
+    .header p {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 14px;
+      position: relative;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .label {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .value-display {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+
+    .input-box {
+      width: 100%;
+      background: #080b10;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-box:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .chip-group {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .chip {
+      background: #0d121c;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 9px 4px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .chip.active {
+      border-color: var(--accent-cyan);
+      background: rgba(0, 242, 254, 0.12);
+      color: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+    }
+
+    select.input-box {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300f2fe' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 16px;
+    }
+
+    /* Result Banner */
+    .result-card {
+      background: var(--card-gradient);
+      border: 1px solid rgba(0, 245, 155, 0.3);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .metric-item {
+      background: rgba(8, 11, 16, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    .metric-item .title {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .metric-item .num {
+      font-size: 16px;
+      font-weight: 800;
+      margin-top: 4px;
+    }
+
+    .color-green { color: var(--accent-green); }
+    .color-red { color: var(--accent-red); }
+    .color-cyan { color: var(--accent-cyan); }
+
+    .summary-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 12px;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+    }
+
+    .summary-line:last-child {
+      border-bottom: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Aura Quantum Calc</h1>
+    <p>Risk & Pip Precision Terminal</p>
+  </div>
+
+  <!-- Баланс и инструмент -->
+  <div class="card">
+    <div class="row">
+      <span class="label">💼 ДЕПОЗИТ ($)</span>
+      <span class="label">АКТИВ</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 8px;">
+      <input type="number" id="depositInput" class="input-box" value="100" min="1" step="10">
+      <select id="assetSelect" class="input-box">
+        <option value="SOL" data-pip="0.10" data-digits="2">🟣 SOL/USDT</option>
+        <option value="BTC" data-pip="1.00" data-digits="1">🪙 BTC/USDT</option>
+        <option value="ETH" data-pip="0.10" data-digits="2">🔷 ETH/USDT</option>
+        <option value="BNB" data-pip="0.10" data-digits="2">🟡 BNB/USDT</option>
+        <option value="TON" data-pip="0.001" data-digits="3">💎 TON/USDT</option>
+        <option value="XRP" data-pip="0.0001" data-digits="4">⚪ XRP/USDT</option>
+        <option value="DOGE" data-pip="0.00001" data-digits="5">🐶 DOGE/USDT</option>
+        <option value="PAXG" data-pip="0.10" data-digits="2">👑 PAXG (Gold)</option>
+        <option value="EUR" data-pip="0.0001" data-digits="4">💶 EUR/USDT</option>
+        <option value="GBP" data-pip="0.0001" data-digits="4">💷 GBP/USDT</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Риск на сделку -->
+  <div class="card">
+    <div class="row">
+      <span class="label">🎯 РИСК НА СДЕЛКУ</span>
+      <span id="riskLabel" class="value-display">1.0% ($1.00)</span>
+    </div>
+    <div class="chip-group" id="riskChips">
+      <div class="chip active" data-risk="1">1.0%</div>
+      <div class="chip" data-risk="2">2.0%</div>
+      <div class="chip" data-risk="3">3.0%</div>
+    </div>
+  </div>
+
+  <!-- Дистанция стопа -->
+  <div class="card">
+    <div class="row">
+      <span class="label">🛑 СТОП-ЛОСС (PIPS)</span>
+      <span id="slLabel" class="value-display">20.0 pips</span>
+    </div>
+    <div class="chip-group" id="slChips">
+      <div class="chip" data-sl="15">15 pips</div>
+      <div class="chip active" data-sl="20">20 pips</div>
+      <div class="chip" data-sl="35">35 pips</div>
+    </div>
+  </div>
+
+  <!-- Результат расчета -->
+  <div class="result-card">
+    <div class="row" style="margin-bottom: 6px;">
+      <span class="label" style="color: var(--accent-green);">РАСЧЕТ СТОИМОСТИ И ТЕЙКОВ</span>
+      <span id="ratioTag" class="value-display color-cyan">R:R 1:2.5</span>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric-item">
+        <div class="title">💵 ЦЕНА 1 ПИПСА</div>
+        <div id="pipCostVal" class="num color-cyan">$0.050</div>
+      </div>
+      <div class="metric-item">
+        <div class="title">🛑 РИСК В $ (SL)</div>
+        <div id="slUsdVal" class="num color-red">-$1.00</div>
+      </div>
+    </div>
+
+    <div style="margin-top: 14px;">
+      <div class="summary-line">
+        <span class="label">🎯 Тейк TP1 (1:1.5):</span>
+        <span id="tp1Val" style="font-weight: 700;" class="color-green">+30.0 pips (+$1.50)</span>
+      </div>
+      <div class="summary-line">
+        <span class="label">🎯 Тейк TP2 (1:2.5):</span>
+        <span id="tp2Val" style="font-weight: 700;" class="color-green">+50.0 pips (+$2.50)</span>
+      </div>
+      <div class="summary-line">
+        <span class="label">🚀 Тейк TP3 Runner (1:4):</span>
+        <span id="tp3Val" style="font-weight: 700;" class="color-green">+80.0 pips (+$4.00)</span>
+      </div>
+      <div class="summary-line" style="margin-top: 4px; padding-top: 8px;">
+        <span class="label">💼 Баланс при TP2:</span>
+        <span id="finalBalVal" style="font-weight: 800; color: #fff;">$102.50 (+2.5%)</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Инициализация Telegram WebApp
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.expand();
+      tg.ready();
+    }
+
+    let state = {
+      deposit: 100.0,
+      riskPct: 1.0,
+      slPips: 20.0,
+    };
+
+    const depositInput = document.getElementById("depositInput");
+    const riskChips = document.querySelectorAll("#riskChips .chip");
+    const slChips = document.querySelectorAll("#slChips .chip");
+    const assetSelect = document.getElementById("assetSelect");
+
+    function haptic() {
+      if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('light');
+      }
+    }
+
+    function recalculate() {
+      state.deposit = parseFloat(depositInput.value) || 100.0;
+      const riskUsd = state.deposit * (state.riskPct / 100.0);
+      const pipCost = riskUsd / state.slPips;
+
+      // Обновляем плашки
+      document.getElementById("riskLabel").innerText = `${state.riskPct.toFixed(1)}% ($${riskUsd.toFixed(2)})`;
+      document.getElementById("slLabel").innerText = `${state.slPips.toFixed(1)} pips`;
+
+      // Расчёт сетки метрик
+      document.getElementById("pipCostVal").innerText = `$${pipCost.toFixed(3)}`;
+      document.getElementById("slUsdVal").innerText = `-$${riskUsd.toFixed(2)}`;
+
+      // Расчет целей TP1, TP2, TP3
+      const tp1Pips = state.slPips * 1.5;
+      const tp1Usd = riskUsd * 1.5;
+
+      const tp2Pips = state.slPips * 2.5;
+      const tp2Usd = riskUsd * 2.5;
+
+      const tp3Pips = state.slPips * 4.0;
+      const tp3Usd = riskUsd * 4.0;
+
+      document.getElementById("tp1Val").innerText = `+${tp1Pips.toFixed(1)} pips (+$${tp1Usd.toFixed(2)})`;
+      document.getElementById("tp2Val").innerText = `+${tp2Pips.toFixed(1)} pips (+$${tp2Usd.toFixed(2)})`;
+      document.getElementById("tp3Val").innerText = `+${tp3Pips.toFixed(1)} pips (+$${tp3Usd.toFixed(2)})`;
+
+      const newBal = state.deposit + tp2Usd;
+      const gainPct = (tp2Usd / state.deposit) * 100;
+      document.getElementById("finalBalVal").innerText = `$${newBal.toFixed(2)} (+${gainPct.toFixed(1)}%)`;
+    }
+
+    // Слушатели событий
+    depositInput.addEventListener("input", recalculate);
+    assetSelect.addEventListener("change", () => {
+      haptic();
+      recalculate();
+    });
+
+    riskChips.forEach(chip => {
+      chip.addEventListener("click", () => {
+        haptic();
+        riskChips.forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        state.riskPct = parseFloat(chip.dataset.risk);
+        recalculate();
+      });
+    });
+
+    slChips.forEach(chip => {
+      chip.addEventListener("click", () => {
+        haptic();
+        slChips.forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        state.slPips = parseFloat(chip.dataset.sl);
+        recalculate();
+      });
+    });
+
+    // Стартовый расчет
+    recalculate();
+  </script>
+</body>
+  </html>
